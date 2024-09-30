@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        header,
+        footer {
+            background-color: #333;
+            color: white;
+            width: 100%;
+            text-align: center;
+            padding: 1rem;
+        }
+
+        main {
+            display: grid;
+            grid-template-columns: 1fr;
+            grid-gap: 20px;
+            padding: 20px;
+            width: 90%;
+            max-width: 1200px;
+        }
+
+        @media (min-width: 768px) {
+            main {
+                grid-template-columns: 2fr 1fr;
+            }
+        }
+
+        h1,
+        h2 {
+            margin: 0 0 10px 0;
+        }
+
+        .menu__category {
+            margin-bottom: 10px;
+            border-bottom: 1px solid #ccc;
+            padding-bottom: 10px;
+        }
+
+        .menu__category-header {
+            cursor: pointer;
+            background-color: #f4f4f4;
+            padding: 10px;
+            margin: 0;
+            font-size: 1.2em;
+            border-radius: 5px;
+        }
+
+        .menu__category-header:focus {
+            outline: 2px solid #007BFF;
+        }
+
+        .menu__category-header::after {
+            content: ' +';
+            float: right;
+        }
+
+        .menu__category-header[aria-expanded="true"]::after {
+            content: ' -';
+        }
+
+        .menu__products {
+            list-style: none;
+            padding: 0;
+            margin: 10px 0 0 0;
+        }
+
+        .menu__product {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px;
+            border: 1px solid #ddd;
+            margin-bottom: 5px;
+            border-radius: 5px;
+            transition: background-color 0.3s ease;
+        }
+
+        .menu__product:hover {
+            background-color: #f0f8ff;
+        }
+
+        .menu__product-name {
+            font-size: 1em;
+            cursor: pointer;
+        }
+
+        .menu__favorite {
+            cursor: pointer;
+            font-size: 1.5em;
+        }
+
+        #favorite-products {
+            background-color: #fff3cd;
+            padding: 20px;
+            border: 1px solid #ffeeba;
+            border-radius: 5px;
+        }
+
+        #favorite-products h2 {
+            font-size: 1.5em;
+            margin-bottom: 15px;
+        }
+
+        #favorite-products ul {
+            list-style: none;
+            padding: 0;
+        }
+
+        #favorite-products li {
+            padding: 10px;
+            border: 1px solid #ddd;
+            margin-bottom: 5px;
+            border-radius: 5px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        #favorite-products li:hover {
+            background-color: #f9f9f9;
+        }
+
+        .menu__category-header:focus,
+        .menu__product-name:focus {
+            outline: 2px solid #007BFF;
+        }
+
+        .menu__category-header:hover,
+        .menu__product-name:hover {
+            color: #007BFF;
+        }
+    </style>
+
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Hierarchical product menu with favorites functionality">
+    <meta name="keywords" content="products, menu, ecommerce, favorites, collapsible, responsive">
+    <title>Product Menu</title>
+
+    <meta property="og:title" content="Product Menu">
+    <meta property="og:description" content="Hierarchical menu displaying products with favorites functionality">
+    <meta property="og:url" content="https://your-repo-url.github.io/product-menu/">
+    <meta property="og:image" content="https://your-repo-url.github.io/product-menu/og-image.png">
+</head>
+
+<body>
+
+    <header>
+        <h1>Product Menu</h1>
+    </header>
+
+    <main>
+        <section aria-labelledby="products-section">
+            <h2 id="products-section">Category</h2>
+            <div id="product-menu" role="menu">
+            </div>
+        </section>
+
+        <section aria-labelledby="favorites-section">
+            <h2 id="favorites-section">Favorites</h2>
+            <div id="favorite-products" role="list">
+            </div>
+        </section>
+    </main>
+
+    <footer>
+        <p>&copy; 2024 Product Menu</p>
+    </footer>
+    <script>
+        // Fetch the JSON data
+        fetch('https://neodigm.github.io/FED_Programming_Challenge/products.json')
+            .then(response => response.json())
+            .then(data => {
+                localStorage.removeItem('favorites');
+                localStorage.setItem('productData', JSON.stringify(data));
+                const products = normalizeData(data);
+                renderProductMenu(products);
+                renderFavorites();
+            })
+            .catch(error => console.error('Error fetching products:', error));
+
+        // Normalize the product data by category and generate IDs
+        function normalizeData(data) {
+            const categories = {};
+            data.forEach((product, index) => {
+                product.id = `${index}`; // Generate unique id                             
+                if (!categories[product.cat]) {
+                    categories[product.cat] = [];
+                }
+                categories[product.cat].push(product);
+            });
+            return categories;
+        }
+
+        // Render the product menu with collapsible categories
+        function renderProductMenu(categories) {
+            const menu = document.getElementById('product-menu');
+            menu.innerHTML = '';
+            menu.setAttribute('role', 'menu');
+            Object.keys(categories).forEach(category => {
+                const categoryElement = document.createElement('div');
+                categoryElement.classList.add('menu__category');
+                categoryElement.setAttribute('role', 'group');
+
+                const categoryHeader = document.createElement('h3');
+                categoryHeader.textContent = category;
+                categoryHeader.classList.add('menu__category-header');
+                categoryHeader.setAttribute('tabindex', 0);
+                categoryHeader.setAttribute('aria-expanded', false); 
+                categoryHeader.addEventListener('click', toggleCategory);
+
+                const productList = document.createElement('ul');
+                productList.classList.add('menu__products');
+                productList.setAttribute('role', 'list');
+                productList.style.display = 'none';
+
+                categories[category].forEach(product => {
+                    const productItem = document.createElement('li');
+                    productItem.classList.add('menu__product');
+                    productItem.setAttribute('role', 'menuitem');   
+
+                    const productName = document.createElement('span');
+                    productName.textContent = product.product;
+                    productName.classList.add('menu__product-name');
+                    productName.setAttribute('tabindex', 0);
+                    productName.addEventListener('mouseover', () => showSalePrice(product, productName));
+                    productName.addEventListener('mouseleave', () => productName.textContent = product.product);
+
+                    const favoriteIcon = document.createElement('span');
+                    favoriteIcon.classList.add('menu__favorite');
+                    favoriteIcon.setAttribute('data-product-id', product.id);
+                    favoriteIcon.innerHTML = getFavoriteIcon(product.id);
+                    favoriteIcon.addEventListener('click', (event) => toggleFavorite(product, event));
+
+                    productItem.appendChild(productName);
+                    productItem.appendChild(favoriteIcon);
+                    productList.appendChild(productItem);
+                });
+
+                categoryElement.appendChild(categoryHeader);
+                categoryElement.appendChild(productList);
+                menu.appendChild(categoryElement);
+            });
+        }
+
+        // Toggle category visibility
+        function toggleCategory(event) {
+            const productList = event.target.nextElementSibling;
+            const isExpanded = productList.style.display === 'block';
+            productList.style.display = isExpanded ? 'none' : 'block';
+            event.target.setAttribute('aria-expanded', !isExpanded);
+        }
+
+        // Show sale price on hover
+        function showSalePrice(product, element) {
+            element.textContent = `${product.product} - Sale Price: $${product.sale}`;
+        }
+
+        // Get favorite icon
+        function getFavoriteIcon(productId) {
+            const favorites = JSON.parse(localStorage.getItem('favorites')) || [];
+            return favorites.includes(productId) ? '❤️' : '🤍';
+        }
+
+        // Render the favorites list
+        function renderFavorites() {
+            const favoriteSection = document.getElementById('favorite-products');
+            let favorites = JSON.parse(localStorage.getItem('favorites')) || [];
+            const products = JSON.parse(localStorage.getItem('productData'));
+                     
+            favorites = favorites.map(Number);            
+            favoriteSection.innerHTML = '';
+            favoriteSection.setAttribute('role', 'list'); 
+
+            // If there are no favorites, show a message
+            if (favorites.length === 0) {
+                favoriteSection.innerHTML = '<p>No favorites yet.</p>';
+                return;
+            }
+
+            // Create a list of favorite products
+            const favoriteList = document.createElement('ul');
+            products.forEach((product, index) => {
+                if (favorites.includes(index)) {                  
+                    const favoriteItem = document.createElement('li');
+                    favoriteItem.textContent = product.product;
+                    favoriteItem.setAttribute('role', 'listitem');
+                    favoriteList.appendChild(favoriteItem);
+                }
+            });
+
+            favoriteSection.appendChild(favoriteList);
+        }
+
+        // Toggle favorite status
+        function toggleFavorite(product, event) {
+            let favorites = JSON.parse(localStorage.getItem('favorites')) || [];
+            
+            const favoriteIcon = event.target;
+
+            if (!product.id) {                
+                return;
+            }
+            const isFavorite = favorites.includes(product.id);
+            if (isFavorite) {
+                favorites = favorites.filter(favId => favId !== product.id);
+                favoriteIcon.innerHTML = '🤍';
+                mockGoogleAnalyticsEvent(product.product, 'removed from favorites');                
+            } else {
+                favorites.push(product.id);
+                favoriteIcon.innerHTML = '❤️';
+                mockGoogleAnalyticsEvent(product.product, 'added to favorites');                
+            }
+
+            localStorage.setItem('favorites', JSON.stringify(favorites));
+            renderFavorites();
+        }
+
+        // Mock a Google Analytics event
+        function mockGoogleAnalyticsEvent(productName, action) {
+            console.log(`GA Event: Product "${productName}" was ${action}.`);
+        }
+    </script>
+</body>
+
+</html>
